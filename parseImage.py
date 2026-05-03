@@ -3,7 +3,8 @@
 from email.mime import image
 import hashlib # to get a STABLE hash of the tile content, we can use this as a key to identify unique tiles.
 
-from tiler import Tiler     
+from tiler import Tiler   
+from tile  import Tile
 
 import numpy as np
 from PIL import Image
@@ -22,6 +23,7 @@ def tile_image(image_array, smallestY=0, smallestX=0):
     tiles = Tiler(data_shape=image_array.shape,
             tile_shape=(7, 7, 3),
             channel_dimension=-1)
+    Tile.init(tiles, smallestX, smallestY)
         
     # create a hashmap of tile-type (content) to tile-id
     tile_content_to_ids = {}
@@ -38,25 +40,27 @@ def tile_image(image_array, smallestY=0, smallestX=0):
             row=[]
             tilearray.append(row)
         tileHash=int(hashlib.md5(tile.tobytes()).hexdigest()[0:8],16)
-        if tileHash not in tile_content_to_ids:
-            tile_content_to_ids[tileHash]=[]    
-        tile_content_to_ids[tileHash].append(tile_id)
-        row.append(tileHash)
+        tileObj = tile_content_to_ids.get(tileHash)
+        if tileObj != None:
+            tileObj.addTileIndex(tile_id)
+        else:
+            tile_content_to_ids[tileHash]=Tile(tileHash, tile_id) 
+
+        row.append(tileObj)
 
     print (f'Unique tiles: {len(tile_content_to_ids)}')
 
     ## Create images for each tile and store it.
     index=0
-    for content_hash, tile_ids in tile_content_to_ids.items():
-        representation = tile_ids[0] 
-        bb=tiles.get_tile_mosaic_position(representation)
-        x=bb[1]
-        y=bb[0]  
-        tile=tiles.get_tile(image_array, representation, copy_data=False)
-        Image.fromarray(tile).save(f'tiles/tile_{(x+smallestX):+04d}_{(y+smallestY):+04d}_{int(content_hash):010d}.png') 
-        print(f'{index:4d}/{len(tile_content_to_ids)} Tile id: {representation}, Representation: ({x+smallestX},{y+smallestY})), count: {len(tile_ids)}      ',end="\r")
+    for content_hash, tileObj in tile_content_to_ids.items():
+        representation = tileObj.getRepresentation() 
+        x=tileObj.getX()
+        y=tileObj.getY()  
+        tile=Tile.tiles.get_tile(image_array, representation, copy_data=False)
+        Image.fromarray(tile).save(f'tiles/tile_{x:+04d}_{y:+04d}_{int(content_hash):010d}.png') 
+        print(f'{index:4d}/{len(tile_content_to_ids)} Tile id: {representation}, Representation: ({x},{y})), count: {len(tile_content_to_ids)}      ',end="\r")
         index += 1
-
+    print (" "*90)
     print (f'Unique tiles: {len(tile_content_to_ids)}')
     return tiles, tile_content_to_ids, tilearray
 
@@ -69,9 +73,9 @@ def writeTiles(filename, tilearray):
 def writeTileData(filename, tilecontent):
     ## output tile content as csv by their representation id
     with open(filename  , 'w') as f:
-        f.write('content_hash,count\n')
-        for content_hash, tile_ids in tilecontent.items():
-            f.write(f'{content_hash},{len(tile_ids)}\n')
+        f.write('content_hash,rep_x, rep_y, count\n')
+        for content_hash, tileObj in tilecontent.items():
+            f.write(f'{content_hash},{tileObj.getX()},{tileObj.getY()},{tileObj.getCount()}\n')
             
 # Example usage
 if __name__ == "__main__":  
