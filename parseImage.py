@@ -25,8 +25,6 @@ def tile_image(image_array, smallestY=0, smallestX=0):
             channel_dimension=-1)
     Tile.init(tiles, smallestX, smallestY)
         
-    # create a hashmap of tile-type (content) to tile-id
-    tile_content_to_ids = {}
     ## Access tiles:
     height, width = tiles.get_mosaic_shape()
     print(f'Height in Tiles: {height}, Width in Tiles: {width}')
@@ -40,40 +38,40 @@ def tile_image(image_array, smallestY=0, smallestX=0):
             row=[]
             tilearray.append(row)
         tileHash=int(hashlib.md5(tile.tobytes()).hexdigest()[0:8],16)
-        tileObj = tile_content_to_ids.get(tileHash)
+        tileObj = Tile.tilePerHash.get(tileHash)
         if tileObj != None:
             tileObj.addTileIndex(tile_id)
         else:
-            tile_content_to_ids[tileHash]=Tile(tileHash, tile_id) 
+            tileObj=Tile(tileHash, tile_id) 
 
         row.append(tileObj)
 
-    print (f'Unique tiles: {len(tile_content_to_ids)}')
+    print (f'Unique tiles: {len(Tile.tilePerHash)}')
 
     ## Create images for each tile and store it.
     index=0
-    for content_hash, tileObj in tile_content_to_ids.items():
+    for content_hash, tileObj in Tile.tilePerHash.items():
         representation = tileObj.getRepresentation() 
         x=tileObj.getX()
         y=tileObj.getY()  
         tile=Tile.tiles.get_tile(image_array, representation, copy_data=False)
         Image.fromarray(tile).save(f'tiles/tile_{x:+04d}_{y:+04d}_{int(content_hash):010d}.png') 
-        print(f'{index:4d}/{len(tile_content_to_ids)} Tile id: {representation}, Representation: ({x},{y})), count: {len(tile_content_to_ids)}      ',end="\r")
+        print(f'{index:4d}/{len(Tile.tilePerHash)} Tile id: {representation}, Representation: ({x},{y})), count: {tileObj.getCount()}      ',end="\r")
         index += 1
     print (" "*90)
-    print (f'Unique tiles: {len(tile_content_to_ids)}')
-    return tiles, tile_content_to_ids, tilearray
+    print (f'Unique tiles: {len(Tile.tilePerHash)}')
+    return tiles, Tile.tilePerHash, tilearray
 
 def writeTiles(filename, tilearray):
     ## output tiles as csv by their representation id
     with open(filename, 'w') as f:
         for row in tilearray:
-            f.write(','.join(map(str, row)) + '\n') 
+            f.write(','.join(map(str, [t.getHash() for t in row])) + '\n') 
             
 def writeTileData(filename, tilecontent):
     ## output tile content as csv by their representation id
     with open(filename  , 'w') as f:
-        f.write('content_hash,rep_x, rep_y, count\n')
+        f.write('content_hash,rep_x,rep_y,count\n')
         for content_hash, tileObj in tilecontent.items():
             f.write(f'{content_hash},{tileObj.getX()},{tileObj.getY()},{tileObj.getCount()}\n')
             
