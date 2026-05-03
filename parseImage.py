@@ -77,11 +77,11 @@ def writeTileData(filename, tilecontent):
             
 # Example usage
 if __name__ == "__main__":  
-    image_path = 'myMap_1777713062244.png'  # Replace with your image path
+    image_path = 'myMap_1777806757131.png'  # Replace with your image path
     image_array = parse_image(image_path)
     
     print("Loaded image with shape: (height, width, depth)",image_array.shape)
-    tiles, tilecontent, tilearray = tile_image(image_array, smallestY=-214, smallestX=-184)
+    tiles, tilecontent, tilearray = tile_image(image_array, smallestY=-215, smallestX=-184)
     
     writeTiles("tiles.csv", tilearray)
     
